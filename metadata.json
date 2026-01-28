@@ -1,0 +1,8 @@
+{
+  "name": "MindScope",
+  "description": "A secure, AI-driven mental wellness mirror that understands your emotional state, provides empathetic support, and tracks your well-being journey.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
