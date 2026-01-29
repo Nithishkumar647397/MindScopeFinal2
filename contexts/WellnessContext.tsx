@@ -79,6 +79,13 @@ export const WellnessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const clearChat = () => {
+    if (user) {
+      setChatHistory([]);
+      localStorage.removeItem(`chats_${user.id}`);
+    }
+  };
+
   const addMessage = async (content: string, role: 'user' | 'model', links?: any[]) => {
     if (!user) return;
 
@@ -100,9 +107,12 @@ export const WellnessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       groundingLinks: links
     };
 
-    const updatedChats = [...chatHistory, newMessage];
-    setChatHistory(updatedChats);
-    localStorage.setItem(`chats_${user.id}`, JSON.stringify(updatedChats));
+    // Use functional update to get latest state
+    setChatHistory(prevHistory => {
+      const updatedChats = [...prevHistory, newMessage];
+      localStorage.setItem(`chats_${user.id}`, JSON.stringify(updatedChats));
+      return updatedChats;
+    });
   };
 
   return (
@@ -115,7 +125,8 @@ export const WellnessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addMessage,
       addMoodLog,
       isLoadingAI,
-      refreshInsights
+      refreshInsights,
+      clearChat
     }}>
       {children}
     </WellnessContext.Provider>
