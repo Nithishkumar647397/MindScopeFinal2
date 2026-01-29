@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Sparkles, User, Bot } from 'lucide-react';
+import { Send, Mic, Sparkles, User, Bot, Trash2 } from 'lucide-react';
 import { useWellness } from '../contexts/WellnessContext';
 import { getChatResponse } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +11,7 @@ declare global {
 }
 
 export const ChatInterface: React.FC = () => {
-  const { chatHistory, addMessage, isLoadingAI } = useWellness();
+  const { chatHistory, addMessage, isLoadingAI, clearChat } = useWellness();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -31,8 +30,11 @@ export const ChatInterface: React.FC = () => {
     
     const userMsg = input;
     setInput('');
+    
+    // Add user message first
     await addMessage(userMsg, 'user');
 
+    // Get AI response
     const history = chatHistory.slice(-10).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
@@ -52,8 +54,15 @@ export const ChatInterface: React.FC = () => {
     isListening ? recognition.stop() : recognition.start();
   };
 
+  const handleClearChat = () => {
+    if (confirm("Clear all chat history?")) {
+      clearChat();
+    }
+  };
+
   return (
     <div className="flex flex-col h-[550px] bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-2xl">
+      {/* Header with Clear Button */}
       <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-50 p-2.5 rounded-2xl text-indigo-600 shadow-sm">
@@ -64,8 +73,20 @@ export const ChatInterface: React.FC = () => {
             <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest">Always here for you</p>
           </div>
         </div>
+        
+        {/* Clear Chat Button */}
+        {chatHistory.length > 0 && (
+          <button 
+            onClick={handleClearChat}
+            className="p-2.5 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all"
+            title="Clear chat history"
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
       </div>
 
+      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
         {chatHistory.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center px-10">
@@ -104,6 +125,7 @@ export const ChatInterface: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input Area */}
       <div className="p-6 bg-white border-t border-gray-100">
         <div className="flex gap-3 items-center">
           <button 

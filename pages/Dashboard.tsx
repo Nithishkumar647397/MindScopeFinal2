@@ -62,6 +62,13 @@ const Dashboard: React.FC = () => {
     setIsRefreshingRecs(false);
   };
 
+  const clearChatHistory = () => {
+    if (user && confirm("Clear all chat history?")) {
+      localStorage.removeItem(`chats_${user.id}`);
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
     fetchRecommendations();
   }, [currentMood]);

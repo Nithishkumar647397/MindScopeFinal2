@@ -14,6 +14,7 @@ interface WellnessContextType {
   addMoodLog: (mood: Mood) => void;
   isLoadingAI: boolean;
   refreshInsights: () => Promise<void>;
+  clearChat: () => void;  // ADD THIS LINE
 }
 
 const WellnessContext = createContext<WellnessContextType | undefined>(undefined);
