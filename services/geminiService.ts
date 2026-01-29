@@ -1,63 +1,66 @@
 import { Mood } from "../types";
 
-// 🔑 PASTE YOUR REAL GEMINI API KEY HERE (from aistudio.google.com)
-const API_KEY = "AIzaSyCHZka0f7Pw4Dih-y6dVgoPBhnES61Cu_w";
+// Get API key from environment
+const API_KEY = process.env.GROQ_API_KEY || "";
 
-// Base URL for the v1 Gemini API
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1/models";
+// Groq API endpoint
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// Helper: Call Gemini via HTTP REST
-async function callGemini(model: string, contents: any[]): Promise<string> {
-  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${API_KEY}`;
+// Model to use (fast and free)
+const MODEL = "llama-3.1-8b-instant";
 
-  const res = await fetch(url, {
+// Helper: Call Groq API
+async function callGroq(messages: { role: string; content: string }[]): Promise<string> {
+  const res = await fetch(GROQ_API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1024
+    }),
   });
 
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("Gemini HTTP error", res.status, data);
+    console.error("Groq HTTP error", res.status, data);
     throw new Error(data.error?.message || `HTTP ${res.status}`);
   }
 
-  const text =
-    data.candidates?.[0]?.content?.parts
-      ?.map((p: any) => p.text || "")
-      .join("") || "";
-
-  return text.trim();
+  return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
 // ----------------- Chat -----------------
 
 export const getChatResponse = async (_history: any[], userMsg: string) => {
   try {
-    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_")) {
-      return { text: "Error: API key is not set in geminiService.ts." };
+    if (!API_KEY) {
+      return { text: "Error: API key is not set." };
     }
 
-    const systemPrompt =
-      "You are MindScope, an empathetic AI mental wellness companion. " +
-      "Keep responses concise, warm, and supportive. Do not give medical advice.";
-
-    const userPrompt = `${systemPrompt}\n\nUser: ${userMsg}`;
-
-    const reply = await callGemini("gemini-1.5-flash", [
+    const messages = [
+      {
+        role: "system",
+        content: "You are MindScope, an empathetic AI mental wellness companion. Keep responses concise, warm, and supportive. Do not give medical advice."
+      },
       {
         role: "user",
-        parts: [{ text: userPrompt }],
-      },
-    ]);
+        content: userMsg
+      }
+    ];
+
+    const reply = await callGroq(messages);
 
     return { text: reply || "I'm here with you, even if words are hard to find." };
   } catch (err) {
-    console.error("Gemini Chat Error:", err);
+    console.error("Groq Chat Error:", err);
     return {
-      text:
-        "I'm having trouble connecting to the AI service right now. Please check your API key or try again later.",
+      text: "I'm having trouble connecting to the AI service right now. Please try again later.",
     };
   }
 };
@@ -66,14 +69,20 @@ export const getChatResponse = async (_history: any[], userMsg: string) => {
 
 export const analyzeMood = async (text: string): Promise<Mood> => {
   try {
-    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_")) return Mood.Neutral;
+    if (!API_KEY) return Mood.Neutral;
 
-    const prompt = `Analyze the sentiment of this text and categorize it into exactly one of these moods: Happy, Excited, Calm, Neutral, Confused, Sad, Tired, Lonely, Stress, Anxiety, Angry, Depressed. Return ONLY the word.\n\nText: "${text}"`;
+    const messages = [
+      {
+        role: "system",
+        content: "You are a mood analyzer. Respond with ONLY one word from this list: Happy, Excited, Calm, Neutral, Confused, Sad, Tired, Lonely, Stress, Anxiety, Angry, Depressed"
+      },
+      {
+        role: "user",
+        content: `Analyze the mood of this text: "${text}"`
+      }
+    ];
 
-    const answer = await callGemini("gemini-1.5-flash", [
-      { role: "user", parts: [{ text: prompt }] },
-    ]);
-
+    const answer = await callGroq(messages);
     const moodText = answer.trim().replace(/[^a-zA-Z]/g, "");
 
     if (Object.values(Mood).includes(moodText as Mood)) {
@@ -90,15 +99,16 @@ export const analyzeMood = async (text: string): Promise<Mood> => {
 
 export const getMoodQuote = async (mood: Mood): Promise<string> => {
   try {
-    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_"))
-      return "Welcome to MindScope.";
+    if (!API_KEY) return "Welcome to MindScope.";
 
-    const prompt = `Give me a short, powerful, comforting quote for someone feeling ${mood}.`;
+    const messages = [
+      {
+        role: "user",
+        content: `Give me a short, powerful, comforting quote (1-2 sentences) for someone feeling ${mood}. Just the quote, no attribution.`
+      }
+    ];
 
-    const answer = await callGemini("gemini-1.5-flash", [
-      { role: "user", parts: [{ text: prompt }] },
-    ]);
-
+    const answer = await callGroq(messages);
     return answer || "This too shall pass.";
   } catch (err) {
     console.error("Quote Error:", err);
@@ -112,19 +122,20 @@ export const generateWeeklyReport = async (logs: any[]): Promise<string> => {
   if (logs.length === 0) return "Not enough data for a report yet.";
 
   try {
-    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_"))
-      return "Not enough data for a report yet.";
+    if (!API_KEY) return "Not enough data for a report yet.";
 
     const logSummary = logs
       .map((l) => `${new Date(l.timestamp).toLocaleDateString()}: ${l.mood}`)
       .join("\n");
 
-    const prompt = `Based on these mood logs, write a 2-sentence supportive, compassionate summary of the user's emotional week:\n\n${logSummary}`;
+    const messages = [
+      {
+        role: "user",
+        content: `Based on these mood logs, write a 2-sentence supportive, compassionate summary of the user's emotional week:\n\n${logSummary}`
+      }
+    ];
 
-    const answer = await callGemini("gemini-1.5-flash", [
-      { role: "user", parts: [{ text: prompt }] },
-    ]);
-
+    const answer = await callGroq(messages);
     return answer || "Your week had ups and downs, and it's okay to feel all of it.";
   } catch (err) {
     console.error("Weekly Report Error:", err);
@@ -132,7 +143,7 @@ export const generateWeeklyReport = async (logs: any[]): Promise<string> => {
   }
 };
 
-// ----------------- Music & Places (still mocked) -----------------
+// ----------------- Music & Places -----------------
 
 export const getMusicRecommendations = async (mood: Mood) => {
   const query = `relaxing music for ${mood} mood`;
@@ -140,9 +151,7 @@ export const getMusicRecommendations = async (mood: Mood) => {
     links: [
       {
         title: `${mood} Vibes Mix`,
-        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(
-          query,
-        )}`,
+        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
       },
       {
         title: "Soul Soothing Melody",
