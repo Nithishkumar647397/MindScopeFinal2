@@ -78,6 +78,28 @@
       .animate-blink { animation: blink 4s ease-in-out infinite; }
       .animate-breathe { animation: breathe 3s ease-in-out infinite; }
       .animate-thinking-eyes { animation: thinking-eyes 1s ease-in-out infinite; }
+      @keyframes floatUp {
+             0% {
+                 transform: translateY(0) translateX(0) scale(0.8);
+                opacity: 0;
+                }
+             5% {
+                opacity: 0.7;
+                transform: translateY(-10vh) translateX(5px) scale(1);
+                }
+             50% {
+                 opacity: 0.9;
+                 transform: translateY(-50vh) translateX(-10px) scale(1.1);
+                 }
+             95% {
+                  opacity: 0.5;
+                  transform: translateY(-95vh) translateX(5px) scale(0.9);
+                 }
+             100% {
+                  opacity: 0;
+                  transform: translateY(-100vh) translateX(0) scale(0.8);
+                  }
+                  }
     </style>
   </head>
   <body>
