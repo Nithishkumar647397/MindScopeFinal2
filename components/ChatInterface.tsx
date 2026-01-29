@@ -3,6 +3,7 @@ import { Send, Mic, Sparkles, User, Bot, Trash2 } from 'lucide-react';
 import { useWellness } from '../contexts/WellnessContext';
 import { getChatResponse } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
+import { MoodAvatar } from './MoodAvatar';
 
 declare global {
   interface Window {
@@ -11,7 +12,7 @@ declare global {
 }
 
 export const ChatInterface: React.FC = () => {
-  const { chatHistory, addMessage, isLoadingAI, clearChat } = useWellness();
+  const { chatHistory, addMessage, isLoadingAI, clearChat, currentMood } = useWellness();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -62,12 +63,10 @@ export const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[550px] bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-2xl">
-      {/* Header with Clear Button */}
+      {/* Header with Avatar and Clear Button */}
       <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-50 p-2.5 rounded-2xl text-indigo-600 shadow-sm">
-             <Bot size={20} />
-          </div>
+          <MoodAvatar mood={currentMood} isThinking={isLoadingAI} size={50} />
           <div>
             <h2 className="font-bold text-gray-900 text-[15px]">MindScope Companion</h2>
             <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest">Always here for you</p>

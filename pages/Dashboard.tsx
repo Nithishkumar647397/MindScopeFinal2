@@ -7,6 +7,7 @@ import { MoodChart } from '../components/MoodChart';
 import { MOOD_COLORS, MOOD_ICONS, MOOD_SUPPORT_LINES } from '../constants.ts';
 import { findPeacefulPlaces, getMusicRecommendations } from '../services/geminiService';
 import { LogOut, Sparkles, Calendar, X, Music, MapPin, ExternalLink, RefreshCw, User as UserIcon } from 'lucide-react';
+import { FloatingOrbs } from '../components/FloatingOrbs';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -80,7 +81,8 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ backgroundColor: bgColor }} className="min-h-screen transition-all duration-[1000ms] ease-in-out selection:bg-indigo-100/30 overflow-x-hidden pb-12">
+    <div style={{ backgroundColor: bgColor }} className="min-h-screen transition-all duration-[1000ms] ease-in-out selection:bg-indigo-100/30 overflow-x-hidden pb-12 relative">
+      <FloatingOrbs />
       <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-6">
         
         {/* Navigation Bar */}
