@@ -6,18 +6,47 @@ import { ChatInterface } from '../components/ChatInterface';
 import { MoodChart } from '../components/MoodChart';
 import { MOOD_COLORS, MOOD_ICONS, MOOD_SUPPORT_LINES } from '../constants.ts';
 import { findPeacefulPlaces, getMusicRecommendations } from '../services/geminiService';
+import { Mood } from '../types';
 import { LogOut, Sparkles, Calendar, X, Music, MapPin, ExternalLink, RefreshCw, User as UserIcon } from 'lucide-react';
 import { FloatingOrbs } from '../components/FloatingOrbs';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const { currentMood, currentQuote, weeklyReport, refreshInsights } = useWellness();
+  const { currentMood, currentQuote, weeklyReport, refreshInsights, moodLogs } = useWellness();
   const [showReport, setShowReport] = useState(false);
   const [places, setPlaces] = useState<any[]>([]);
   const [songs, setSongs] = useState<any[]>([]);
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<string>("Detecting...");
+
+  const getBalanceStatus = () => {
+    const positiveMoods = [Mood.Happy, Mood.Excited, Mood.Calm];
+    const negativeMoods = [Mood.Sad, Mood.Angry, Mood.Depressed, Mood.Anxiety, Mood.Stress];
+    
+    if (moodLogs.length < 2) return "New";
+    
+    // Get last 5 moods
+    const recentMoods = moodLogs.slice(-5).map(log => log.mood);
+    const positiveCount = recentMoods.filter(m => positiveMoods.includes(m)).length;
+    const negativeCount = recentMoods.filter(m => negativeMoods.includes(m)).length;
+    
+    if (positiveCount > negativeCount + 1) return "Rising";
+    if (negativeCount > positiveCount + 1) return "Falling";
+    if (positiveCount === negativeCount) return "Balanced";
+    return "Stable";
+  };
+
+  const getBalanceColor = () => {
+    const status = getBalanceStatus();
+    switch (status) {
+      case "Rising": return "text-green-500";
+      case "Falling": return "text-red-400";
+      case "Balanced": return "text-indigo-600";
+      case "New": return "text-gray-400";
+      default: return "text-indigo-600";
+    }
+  };
   
   const CurrentMoodIcon = MOOD_ICONS[currentMood];
   const bgColor = MOOD_COLORS[currentMood];
@@ -173,10 +202,10 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-end mt-8 pt-6 border-t border-gray-50">
                     <div>
                         <p className="text-3xl font-black text-gray-900">{currentMood}</p>
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Avg Pulse</p>
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Current Mood</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xl font-black text-indigo-600">Stable</p>
+                        <p className={`text-xl font-black ${getBalanceColor()}`}>{getBalanceStatus()}</p>
                         <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Balance</p>
                     </div>
                 </div>

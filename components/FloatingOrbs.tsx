@@ -2,7 +2,7 @@ import React from 'react';
 
 export const FloatingOrbs: React.FC = () => {
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-10">
       {/* Orb 1 - Large */}
       <div 
         className="absolute rounded-full animate-float-1"

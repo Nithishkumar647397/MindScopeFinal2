@@ -96,9 +96,15 @@ export const ChatInterface: React.FC = () => {
         
         {chatHistory.map((msg) => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${msg.role === 'user' ? 'bg-indigo-600' : 'bg-white border border-gray-100'}`}>
-               {msg.role === 'user' ? <User size={16} className="text-white" /> : <Bot size={16} className="text-indigo-600" />}
-            </div>
+            {msg.role === 'user' ? (
+              <div className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm bg-indigo-600">
+                <User size={16} className="text-white" />
+              </div>
+            ) : (
+              <div className="flex-shrink-0">
+                <MoodAvatar mood={msg.relatedMood ?? currentMood} size={36} />
+              </div>
+            )}
             <div className={`max-w-[80%] p-4 rounded-2xl text-[14px] leading-relaxed shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-indigo-600 text-white rounded-tr-none'
@@ -111,8 +117,8 @@ export const ChatInterface: React.FC = () => {
 
         {isLoadingAI && (
             <div className="flex gap-3">
-                 <div className="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm">
-                    <Bot size={16} className="text-indigo-600" />
+                 <div className="flex-shrink-0">
+                    <MoodAvatar mood={currentMood} isThinking={true} size={36} />
                  </div>
                  <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-200 shadow-sm flex space-x-1.5">
                     <div className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></div>
