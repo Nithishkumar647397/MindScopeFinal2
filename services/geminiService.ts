@@ -37,22 +37,34 @@ async function callGroq(messages: { role: string; content: string }[]): Promise<
 
 // ----------------- Chat -----------------
 
-export const getChatResponse = async (_history: any[], userMsg: string) => {
+export const getChatResponse = async (history: any[], userMsg: string) => {
   try {
     if (!API_KEY) {
       return { text: "Error: API key is not set." };
     }
 
-    const messages = [
+    // System message
+    const messages: { role: string; content: string }[] = [
       {
         role: "system",
-        content: "You are MindScope, an empathetic AI mental wellness companion. Keep responses concise, warm, and supportive. Do not give medical advice."
-      },
-      {
-        role: "user",
-        content: userMsg
+        content: "You are MindScope, an empathetic AI mental wellness companion. Keep responses concise, warm, and supportive. Do not give medical advice. Remember the conversation context and refer to previous messages when relevant."
       }
     ];
+
+    // Add conversation history (last 10 messages for context)
+    const recentHistory = history.slice(-10);
+    for (const msg of recentHistory) {
+      messages.push({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.parts?.[0]?.text || msg.content || ''
+      });
+    }
+
+    // Add current user message
+    messages.push({
+      role: "user",
+      content: userMsg
+    });
 
     const reply = await callGroq(messages);
 
@@ -64,37 +76,6 @@ export const getChatResponse = async (_history: any[], userMsg: string) => {
     };
   }
 };
-
-// ----------------- Mood Analysis -----------------
-
-export const analyzeMood = async (text: string): Promise<Mood> => {
-  try {
-    if (!API_KEY) return Mood.Neutral;
-
-    const messages = [
-      {
-        role: "system",
-        content: "You are a mood analyzer. Respond with ONLY one word from this list: Happy, Excited, Calm, Neutral, Confused, Sad, Tired, Lonely, Stress, Anxiety, Angry, Depressed"
-      },
-      {
-        role: "user",
-        content: `Analyze the mood of this text: "${text}"`
-      }
-    ];
-
-    const answer = await callGroq(messages);
-    const moodText = answer.trim().replace(/[^a-zA-Z]/g, "");
-
-    if (Object.values(Mood).includes(moodText as Mood)) {
-      return moodText as Mood;
-    }
-    return Mood.Neutral;
-  } catch (err) {
-    console.error("Mood Analysis Error:", err);
-    return Mood.Neutral;
-  }
-};
-
 // ----------------- Mood Quote -----------------
 
 export const getMoodQuote = async (mood: Mood): Promise<string> => {
@@ -113,6 +94,76 @@ export const getMoodQuote = async (mood: Mood): Promise<string> => {
   } catch (err) {
     console.error("Quote Error:", err);
     return "This too shall pass.";
+  }
+};
+
+// ----------------- Mood Analysis -----------------
+
+export const analyzeMood = async (text: string): Promise<Mood> => {
+  try {
+    if (!API_KEY) return Mood.Neutral;
+
+    const messages = [
+      {
+        role: "system",
+        content: `You are a mood analyzer. Analyze the user's text and respond with EXACTLY one word from this list:
+        
+- Happy (joy, success, celebration)
+- Excited (anticipation, thrill, enthusiasm)
+- Calm (peaceful, relaxed, serene)
+- Neutral (normal, okay, factual questions)
+- Confused (uncertain, unclear, lost)
+- Sad (grief, disappointment, crying)
+- Tired (exhausted, sleepy, drained)
+- Lonely (isolated, alone, abandoned)
+- Stress (overwhelmed, pressure, deadlines, too much work)
+- Anxiety (worry, fear, panic, racing heart, nervous)
+- Angry (frustrated, rage, irritated)
+- Depressed (hopeless, empty, nothing matters)
+
+IMPORTANT: Reply with ONLY the mood word. No punctuation. No explanation.`
+      },
+      {
+        role: "user",
+        content: text
+      }
+    ];
+
+    const answer = await callGroq(messages);
+    
+    // Clean the response
+    let moodText = answer.trim().replace(/[^a-zA-Z]/g, "");
+    
+    // Handle common variations
+    const moodMap: Record<string, Mood> = {
+      'Stressed': Mood.Stress,
+      'Anxious': Mood.Anxiety,
+      'Depressing': Mood.Depressed,
+      'Angry': Mood.Angry,
+      'Frustrated': Mood.Angry,
+      'Worried': Mood.Anxiety,
+      'Nervous': Mood.Anxiety,
+      'Overwhelmed': Mood.Stress,
+      'Exhausted': Mood.Tired,
+      'Joyful': Mood.Happy,
+      'Peaceful': Mood.Calm,
+      'Isolated': Mood.Lonely
+    };
+
+    // Check if it's a variation
+    if (moodMap[moodText]) {
+      return moodMap[moodText];
+    }
+
+    // Check if it's a direct match
+    if (Object.values(Mood).includes(moodText as Mood)) {
+      return moodText as Mood;
+    }
+    
+    return Mood.Neutral;
+  } catch (err) {
+    console.error("Mood Analysis Error:", err);
+    return Mood.Neutral;
   }
 };
 
@@ -146,21 +197,73 @@ export const generateWeeklyReport = async (logs: any[]): Promise<string> => {
 // ----------------- Music & Places -----------------
 
 export const getMusicRecommendations = async (mood: Mood) => {
-  const query = `relaxing music for ${mood} mood`;
+  // Tamil mood-based music mapping
+  const tamilMusicQueries: Record<Mood, string[]> = {
+    [Mood.Happy]: [
+      "Tamil happy songs playlist",
+      "Tamil upbeat kuthu songs"
+    ],
+    [Mood.Excited]: [
+      "Tamil mass songs playlist",
+      "Tamil dance hits"
+    ],
+    [Mood.Calm]: [
+      "Tamil melody songs relaxing",
+      "Ilaiyaraaja peaceful songs"
+    ],
+    [Mood.Neutral]: [
+      "Tamil classic hits",
+      "AR Rahman Tamil songs"
+    ],
+    [Mood.Confused]: [
+      "Tamil motivational songs",
+      "Tamil inspirational melody"
+    ],
+    [Mood.Sad]: [
+      "Tamil sad songs feeling",
+      "Tamil emotional melody songs"
+    ],
+    [Mood.Tired]: [
+      "Tamil soft melody sleep",
+      "Tamil relaxing instrumental"
+    ],
+    [Mood.Lonely]: [
+      "Tamil lonely feeling songs",
+      "Tamil heartfelt melody"
+    ],
+    [Mood.Stress]: [
+      "Tamil stress relief melody",
+      "Ilaiyaraaja relaxing instrumental"
+    ],
+    [Mood.Anxiety]: [
+      "Tamil calming songs peaceful",
+      "Tamil meditation music"
+    ],
+    [Mood.Angry]: [
+      "Tamil mass angry songs",
+      "Tamil powerful songs"
+    ],
+    [Mood.Depressed]: [
+      "Tamil hope songs motivational",
+      "Tamil healing emotional songs"
+    ]
+  };
+
+  const queries = tamilMusicQueries[mood] || ["Tamil melody songs"];
+
   return {
     links: [
       {
-        title: `${mood} Vibes Mix`,
-        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+        title: `${mood} - Tamil Hits`,
+        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(queries[0])}`,
       },
       {
-        title: "Soul Soothing Melody",
-        uri: `https://www.youtube.com/results?search_query=healing+music`,
+        title: "Tamil Soul Melody",
+        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(queries[1])}`,
       },
     ],
   };
 };
-
 export const findPeacefulPlaces = async (coords: { lat: number; lng: number }) => {
   return {
     links: [

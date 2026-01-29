@@ -3,18 +3,18 @@ import { Mood } from "./types";
 import { Smile, Frown, Meh, AlertCircle, Zap, CloudLightning, Coffee, Moon, Ghost, Heart, Sparkles, HelpCircle } from 'lucide-react';
 
 export const MOOD_COLORS: Record<Mood, string> = {
-  [Mood.Happy]: '#E6F4EA',
-  [Mood.Excited]: '#FFF9C4',
-  [Mood.Calm]: '#E0F7FA',
-  [Mood.Neutral]: '#F5F5F5',
-  [Mood.Confused]: '#F3E5F5',
-  [Mood.Sad]: '#E3F2FD',
-  [Mood.Tired]: '#ECEFF1',
-  [Mood.Lonely]: '#E8EAF6',
-  [Mood.Stress]: '#FFF3E0',
-  [Mood.Anxiety]: '#FFF8E1',
-  [Mood.Angry]: '#FDECEA',
-  [Mood.Depressed]: '#ECEFF4',
+  [Mood.Happy]: '#A8E6CF',      // Rich mint green
+  [Mood.Excited]: '#FFD54F',    // Warm golden yellow
+  [Mood.Calm]: '#80DEEA',       // Ocean cyan
+  [Mood.Neutral]: '#CFD8DC',    // Soft blue-gray
+  [Mood.Confused]: '#CE93D8',   // Soft lavender
+  [Mood.Sad]: '#90CAF9',        // Soft sky blue
+  [Mood.Tired]: '#B0BEC5',      // Muted blue-gray
+  [Mood.Lonely]: '#9FA8DA',     // Muted indigo
+  [Mood.Stress]: '#FFCC80',     // Warm peach
+  [Mood.Anxiety]: '#FFE082',    // Soft amber
+  [Mood.Angry]: '#EF9A9A',      // Soft coral red
+  [Mood.Depressed]: '#90A4AE',  // Cool slate (darker)
 };
 
 export const MOOD_ICONS: Record<Mood, any> = {
