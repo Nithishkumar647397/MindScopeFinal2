@@ -16,6 +16,7 @@ const Dashboard: React.FC = () => {
   const [songs, setSongs] = useState<any[]>([]);
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<string>("Detecting...");
   
   const CurrentMoodIcon = MOOD_ICONS[currentMood];
   const bgColor = MOOD_COLORS[currentMood];
@@ -30,13 +31,33 @@ const Dashboard: React.FC = () => {
 
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
             try {
-                const placeRes = await findPeacefulPlaces({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                const placeRes = await findPeacefulPlaces({ lat: latitude, lng: longitude });
                 setPlaces(placeRes.links.slice(0, 2));
+
+                // Reverse geocoding
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const geoData = await geoRes.json();
+                    const city = geoData.address.city || geoData.address.town || geoData.address.village;
+                    const state = geoData.address.state;
+                    if (city && state) {
+                        setUserLocation(`${city}, ${state}`);
+                    } else {
+                        setUserLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+                    }
+                } catch (e) {
+                    console.error("Geocoding failed", e);
+                    setUserLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+                }
             } catch (e) { console.error("Places fetch failed", e); }
         }, (err) => {
             console.warn("Location permission denied", err);
+            setUserLocation("Location access denied");
         });
+    } else {
+        setUserLocation("Geolocation not supported");
     }
     setIsRefreshingRecs(false);
   };
@@ -160,7 +181,9 @@ const Dashboard: React.FC = () => {
                    </div>
                    <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">Nearby Peace</h3>
                 </div>
-                <p className="text-sm text-gray-500 mb-8 font-bold italic leading-relaxed">Finding real serene spots near you for reflection.</p>
+                <p className="text-sm text-gray-500 mb-8 font-bold italic leading-relaxed">
+  📍 {userLocation}
+</p>
                 
                 <div className="space-y-4">
                    {places.length > 0 ? places.map((place, i) => (
