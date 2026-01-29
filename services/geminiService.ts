@@ -1,124 +1,168 @@
+import { Mood } from "../types";
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { Mood, MoodLog } from "../types";
+// 🔑 PASTE YOUR REAL GEMINI API KEY HERE (from aistudio.google.com)
+const API_KEY = "AIzaSyCHZka0f7Pw4Dih-y6dVgoPBhnES61Cu_w";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Base URL for the v1 Gemini API
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1/models";
 
-const SYSTEM_INSTRUCTION = `
-You are MindScope, an empathetic mental wellness mirror. 
-- Validate the user's feelings with deep kindness.
-- If they share negative experiences (like failing an exam), respond that one moment doesn't define their whole story.
-- Encourage them to breathe and stay present.
-- Keep responses warm, concise, and focused on healing.
-`;
+// Helper: Call Gemini via HTTP REST
+async function callGemini(model: string, contents: any[]): Promise<string> {
+  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${API_KEY}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("Gemini HTTP error", res.status, data);
+    throw new Error(data.error?.message || `HTTP ${res.status}`);
+  }
+
+  const text =
+    data.candidates?.[0]?.content?.parts
+      ?.map((p: any) => p.text || "")
+      .join("") || "";
+
+  return text.trim();
+}
+
+// ----------------- Chat -----------------
+
+export const getChatResponse = async (_history: any[], userMsg: string) => {
+  try {
+    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_")) {
+      return { text: "Error: API key is not set in geminiService.ts." };
+    }
+
+    const systemPrompt =
+      "You are MindScope, an empathetic AI mental wellness companion. " +
+      "Keep responses concise, warm, and supportive. Do not give medical advice.";
+
+    const userPrompt = `${systemPrompt}\n\nUser: ${userMsg}`;
+
+    const reply = await callGemini("gemini-1.5-flash", [
+      {
+        role: "user",
+        parts: [{ text: userPrompt }],
+      },
+    ]);
+
+    return { text: reply || "I'm here with you, even if words are hard to find." };
+  } catch (err) {
+    console.error("Gemini Chat Error:", err);
+    return {
+      text:
+        "I'm having trouble connecting to the AI service right now. Please check your API key or try again later.",
+    };
+  }
+};
+
+// ----------------- Mood Analysis -----------------
 
 export const analyzeMood = async (text: string): Promise<Mood> => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Text: "${text}". Which mood fits best?
-      Labels: Happy, Excited, Calm, Neutral, Confused, Sad, Tired, Lonely, Stress, Anxiety, Angry, Depressed.
-      Return JSON: {"mood": "Label"}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            mood: { type: Type.STRING, enum: Object.values(Mood) }
-          }
-        }
-      }
-    });
-    const json = JSON.parse(response.text || '{}');
-    return (json.mood as Mood) || Mood.Neutral;
-  } catch (error) {
+    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_")) return Mood.Neutral;
+
+    const prompt = `Analyze the sentiment of this text and categorize it into exactly one of these moods: Happy, Excited, Calm, Neutral, Confused, Sad, Tired, Lonely, Stress, Anxiety, Angry, Depressed. Return ONLY the word.\n\nText: "${text}"`;
+
+    const answer = await callGemini("gemini-1.5-flash", [
+      { role: "user", parts: [{ text: prompt }] },
+    ]);
+
+    const moodText = answer.trim().replace(/[^a-zA-Z]/g, "");
+
+    if (Object.values(Mood).includes(moodText as Mood)) {
+      return moodText as Mood;
+    }
+    return Mood.Neutral;
+  } catch (err) {
+    console.error("Mood Analysis Error:", err);
     return Mood.Neutral;
   }
 };
 
-export const getChatResponse = async (
-  history: { role: string; parts: { text: string }[] }[],
-  lastMessage: string
-): Promise<{ text: string }> => {
-  try {
-    const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: { systemInstruction: SYSTEM_INSTRUCTION },
-      history: history,
-    });
-    const result = await chat.sendMessage({ message: lastMessage });
-    return { text: result.text || "I'm listening. Tell me more." };
-  } catch (error) {
-    return { text: "I'm here for you, even if the connection is currently weak." };
-  }
-};
-
-export const findPeacefulPlaces = async (
-  location: { lat: number, lng: number }
-): Promise<{ text: string, links: Array<{uri: string, title: string}> }> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Find 2 real peaceful places (parks, beaches, temples) near latitude ${location.lat}, longitude ${location.lng}. Return Google Maps links.`,
-      config: { tools: [{ googleSearch: {} }] },
-    });
-
-    const links: Array<{uri: string, title: string}> = [];
-    response.candidates?.[0]?.groundingMetadata?.groundingChunks?.forEach((chunk: any) => {
-      if (chunk.web?.uri) {
-        links.push({ uri: chunk.web.uri, title: chunk.web.title || "Peaceful Spot" });
-      }
-    });
-
-    return { text: response.text || "Found some quiet spots for you.", links };
-  } catch (error) {
-    return { text: "Visit a local park to clear your mind.", links: [] };
-  }
-};
-
-export const getMusicRecommendations = async (mood: Mood): Promise<{ text: string, links: Array<{uri: string, title: string}> }> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Suggest 2 real TAMIL songs for someone feeling ${mood}. Provide real Spotify or YouTube links. Be specific with popular Tamil hits.`,
-      config: { tools: [{ googleSearch: {} }] },
-    });
-
-    const links: Array<{uri: string, title: string}> = [];
-    response.candidates?.[0]?.groundingMetadata?.groundingChunks?.forEach((chunk: any) => {
-      if (chunk.web?.uri) {
-        links.push({ uri: chunk.web.uri, title: chunk.web.title || "Tamil Hit" });
-      }
-    });
-
-    return { text: response.text || "Here's some music to soothe you.", links };
-  } catch (error) {
-    return { text: "Listen to some AR Rahman melodies for peace.", links: [] };
-  }
-};
-
-export const generateWeeklyReport = async (logs: MoodLog[]): Promise<string> => {
-  if (logs.length === 0) return "Start sharing your thoughts to see your weekly journey.";
-  try {
-    const logSummary = logs.slice(-10).map(l => `${new Date(l.timestamp).toLocaleDateString()}: ${l.mood}`).join(', ');
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Based on logs: [${logSummary}], write a very brief 2-sentence empathetic summary of the user's emotional week.`,
-    });
-    return response.text || "Your resilience is your strength.";
-  } catch (error) {
-    return "Reflection is the first step toward growth.";
-  }
-};
+// ----------------- Mood Quote -----------------
 
 export const getMoodQuote = async (mood: Mood): Promise<string> => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Write one short, powerful empathetic quote for someone feeling ${mood}.`,
-    });
-    return response.text?.replace(/"/g, '') || "You are enough exactly as you are.";
-  } catch (error) {
-    return "Deep breaths lead to clear thoughts.";
+    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_"))
+      return "Welcome to MindScope.";
+
+    const prompt = `Give me a short, powerful, comforting quote for someone feeling ${mood}.`;
+
+    const answer = await callGemini("gemini-1.5-flash", [
+      { role: "user", parts: [{ text: prompt }] },
+    ]);
+
+    return answer || "This too shall pass.";
+  } catch (err) {
+    console.error("Quote Error:", err);
+    return "This too shall pass.";
   }
+};
+
+// ----------------- Weekly Report -----------------
+
+export const generateWeeklyReport = async (logs: any[]): Promise<string> => {
+  if (logs.length === 0) return "Not enough data for a report yet.";
+
+  try {
+    if (!API_KEY || API_KEY.startsWith("PASTE_YOUR_"))
+      return "Not enough data for a report yet.";
+
+    const logSummary = logs
+      .map((l) => `${new Date(l.timestamp).toLocaleDateString()}: ${l.mood}`)
+      .join("\n");
+
+    const prompt = `Based on these mood logs, write a 2-sentence supportive, compassionate summary of the user's emotional week:\n\n${logSummary}`;
+
+    const answer = await callGemini("gemini-1.5-flash", [
+      { role: "user", parts: [{ text: prompt }] },
+    ]);
+
+    return answer || "Your week had ups and downs, and it's okay to feel all of it.";
+  } catch (err) {
+    console.error("Weekly Report Error:", err);
+    return "Your mood has been fluctuating, remember to take time for yourself.";
+  }
+};
+
+// ----------------- Music & Places (still mocked) -----------------
+
+export const getMusicRecommendations = async (mood: Mood) => {
+  const query = `relaxing music for ${mood} mood`;
+  return {
+    links: [
+      {
+        title: `${mood} Vibes Mix`,
+        uri: `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          query,
+        )}`,
+      },
+      {
+        title: "Soul Soothing Melody",
+        uri: `https://www.youtube.com/results?search_query=healing+music`,
+      },
+    ],
+  };
+};
+
+export const findPeacefulPlaces = async (coords: { lat: number; lng: number }) => {
+  return {
+    links: [
+      {
+        title: "Nearby Park",
+        uri: `https://www.google.com/maps/search/parks/@${coords.lat},${coords.lng},15z`,
+      },
+      {
+        title: "Quiet Cafe",
+        uri: `https://www.google.com/maps/search/quiet+cafe/@${coords.lat},${coords.lng},15z`,
+      },
+    ],
+  };
 };
