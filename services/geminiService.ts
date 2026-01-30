@@ -269,11 +269,13 @@ export const findPeacefulPlaces = async (coords: { lat: number; lng: number }) =
     links: [
       {
         title: "Nearby Park",
-        uri: `https://www.google.com/maps/search/parks/@${coords.lat},${coords.lng},15z`,
+        // Searches for "parks near me" centered at user's location
+        uri: `https://www.google.com/maps/search/parks+near+me/@${coords.lat},${coords.lng},14z`,
       },
       {
         title: "Quiet Cafe",
-        uri: `https://www.google.com/maps/search/quiet+cafe/@${coords.lat},${coords.lng},15z`,
+        // Searches for "quiet cafes near me" centered at user's location
+        uri: `https://www.google.com/maps/search/quiet+cafes+near+me/@${coords.lat},${coords.lng},14z`,
       },
     ],
   };
